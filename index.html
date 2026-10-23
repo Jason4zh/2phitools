@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0e14">
+<title>osu!mania / Malody → Phigros 谱面转换器</title>
+<style>
+:root{
+  --bg:#0b0e14; --card:#151a24; --card2:#1c2230; --line:#2a3242;
+  --tx:#e8ecf4; --tx2:#9aa6bd; --ac:#4d9dff; --ac2:#22c55e; --warn:#f59e0b; --err:#f2555a;
+  --r:14px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:
+    radial-gradient(900px 500px at 50% -10%, #1b2c46 0%, rgba(11,14,20,0) 65%),
+    radial-gradient(600px 400px at 100% 100%, #1a2b23 0%, rgba(11,14,20,0) 60%),
+    var(--bg);
+  color:var(--tx);
+  font:15px/1.55 -apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;
+  min-height:100vh;
+  padding:0 0 40px;
+  -webkit-font-smoothing:antialiased;
+}
+.app{max-width:760px;margin:0 auto;padding:0 14px}
+header{display:flex;align-items:center;gap:12px;padding:20px 0 14px}
+.logo{
+  width:44px;height:44px;flex:0 0 44px;border-radius:13px;display:grid;place-items:center;
+  background:linear-gradient(145deg,#4d9dff,#8b5cf6);color:#fff;font-size:24px;font-weight:700;
+  box-shadow:0 6px 20px rgba(77,157,255,.35)
+}
+h1{font-size:18px;margin:0;letter-spacing:.3px}
+header p{margin:2px 0 0;font-size:12.5px;color:var(--tx2)}
+.tabs{display:flex;gap:8px;margin:4px 0 14px;background:var(--card);padding:5px;border-radius:12px;border:1px solid var(--line)}
+.tab{
+  flex:1;border:0;background:transparent;color:var(--tx2);font-size:13.5px;font-weight:600;
+  padding:9px 6px;border-radius:9px;font-family:inherit
+}
+.tab.on{background:var(--card2);color:var(--tx);box-shadow:0 2px 10px rgba(0,0,0,.35)}
+.card{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:14px;margin-bottom:12px
+}
+label{display:block;font-size:12.5px;color:var(--tx2);margin-bottom:6px;font-weight:600}
+.row{display:flex;gap:8px;margin-bottom:8px}
+.row:last-child{margin-bottom:0}
+input[type=text],input[type=search],input[type=number],input:not([type]),textarea,select{
+  flex:1;min-width:0;background:var(--card2);border:1px solid var(--line);color:var(--tx);
+  border-radius:10px;padding:10px 12px;font:inherit;font-size:14px;outline:none
+}
+input:focus,textarea:focus{border-color:var(--ac)}
+textarea{width:100%;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.5}
+.btn{
+  border:1px solid var(--line);background:var(--card2);color:var(--tx);border-radius:10px;
+  padding:10px 14px;font:inherit;font-size:14px;font-weight:600;white-space:nowrap
+}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:linear-gradient(145deg,#4d9dff,#3b82f6);border-color:transparent;color:#fff}
+.btn.gr{background:linear-gradient(145deg,#22c55e,#16a34a);border-color:transparent;color:#fff}
+.btn.sm{padding:7px 11px;font-size:12.5px;border-radius:9px}
+.btn:disabled{opacity:.5}
+.hint{font-size:11.5px;color:var(--tx2);margin-top:8px;line-height:1.5}
+.hint a{color:var(--ac);text-decoration:none}
+.msg{font-size:12.5px;margin-top:10px;padding:9px 11px;border-radius:9px;display:none;white-space:pre-wrap;word-break:break-word}
+.msg.show{display:block}
+.msg.ok{background:rgba(34,197,94,.12);color:#7ee2a8}
+.msg.err{background:rgba(242,85,90,.12);color:#ff9b9e}
+.msg.info{background:rgba(77,157,255,.12);color:#a8ccff}
+.msg.warn{background:rgba(245,158,11,.12);color:#ffcf7a}
+
+/* 搜索结果 */
+.set{display:flex;gap:11px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:11px;margin-bottom:10px}
+.set img{width:66px;height:66px;flex:0 0 66px;border-radius:10px;object-fit:cover;background:var(--card2)}
+.set .info{flex:1;min-width:0}
+.set .t{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.set .a{font-size:12px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{
+  font-size:11.5px;padding:4px 9px;border-radius:8px;background:var(--card2);
+  border:1px solid var(--line);color:#bcd0ea;font-weight:600;white-space:nowrap
+}
+.chip.hot{border-color:rgba(77,157,255,.5);color:#9ec7ff}
+.chip.all{background:rgba(34,197,94,.14);border-color:rgba(34,197,94,.4);color:#86e6ae}
+
+/* 输出 */
+.out-title{font-size:13px;color:var(--tx2);font-weight:700;margin:16px 0 8px;letter-spacing:.5px}
+.rcard{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:13px;margin-bottom:10px}
+.rcard h3{margin:0;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tag{font-size:11px;font-weight:700;padding:3px 8px;border-radius:7px;background:rgba(77,157,255,.16);color:#9ec7ff}
+.tag.g{background:rgba(34,197,94,.16);color:#86e6ae}
+.tag.o{background:rgba(245,158,11,.16);color:#ffcf7a}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:7px;margin:11px 0}
+.stat{background:var(--card2);border-radius:9px;padding:7px 9px}
+.stat .k{font-size:10.5px;color:var(--tx2);letter-spacing:.3px}
+.stat .v{font-size:14px;font-weight:700;margin-top:1px}
+.acts{display:flex;gap:8px;flex-wrap:wrap}
+pre{
+  background:#0a0d13;border:1px solid var(--line);border-radius:10px;padding:10px;
+  font-size:11px;line-height:1.5;max-height:280px;overflow:auto;color:#9fb3cc;margin:10px 0 0;
+  white-space:pre;display:none
+}
+pre.show{display:block}
+footer{text-align:center;font-size:11px;color:#5a6678;margin-top:22px;line-height:1.7}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+details summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--tx2);padding:2px 0;list-style:none}
+details summary::-webkit-details-marker{display:none}
+details summary:before{content:"▸ ";color:var(--ac)}
+details[open] summary:before{content:"▾ "}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.grid2 label{margin-top:2px}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">φ</div>
+    <div>
+      <h1>osu!mania / Malody → Phigros 谱面转换器</h1>
+      <p>.mcz / .osz → .pec · 支持 4K / 6K 等多键谱 · BPM 变化 / 长条</p>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab on" data-tab="search">🔍 搜索谱面</button>
+    <button class="tab" data-tab="local">📁 本地文件</button>
+    <button class="tab" data-tab="set">⚙️ 设置</button>
+  </div>
+
+  <!-- 搜索 -->
+  <section data-pane="search">
+    <div class="card">
+      <label>关键词（歌名 / 曲师 / 谱师）</label>
+      <div class="row">
+        <input id="q" type="search" placeholder="例如：Freedom Dive" autocomplete="off">
+        <button id="btnSearch" class="btn primary">搜索</button>
+      </div>
+      <label style="margin-top:12px">或直接输入谱面集链接 / ID</label>
+      <div class="row">
+        <input id="sid" placeholder="https://osu.ppy.sh/beatmapsets/123456 或 123456" autocomplete="off">
+        <button id="btnById" class="btn">下载</button>
+      </div>
+      <div class="hint">只显示 osu!mania 谱面 · <a id="osuweb" href="https://osu.ppy.sh/beatmapsets" target="_blank" rel="noreferrer">在 osu! 官网搜索 ↗</a></div>
+      <div id="smsg" class="msg"></div>
+    </div>
+    <div id="results"></div>
+  </section>
+
+  <!-- 本地文件 -->
+  <section data-pane="local" hidden>
+    <div class="card">
+      <label>选择谱面文件</label>
+      <div class="row">
+        <input type="file" id="file" multiple accept=".mcz,.osz,.zip,.osu,.mc,.mc_" style="padding:9px 10px;font-size:13px">
+      </div>
+      <div class="hint">支持 <b>.mcz</b>（Malody 谱面包）、<b>.mc</b> / <b>.mc_</b>（Malody 单谱，4K / 6K / 7K 等键谱）、<b>.osz</b>、<b>.zip</b>、单个 <b>.osu</b>；可多选。全程本地解析，不上传。</div>
+      <div id="lmsg" class="msg"></div>
+    </div>
+  </section>
+
+  <!-- 设置 -->
+  <section data-pane="set" hidden>
+    <div class="card">
+      <label>搜索接口（每行一条：名称|URL，{q}=关键词）</label>
+      <textarea id="setSrc" rows="6" spellcheck="false"></textarea>
+      <label style="margin-top:12px">下载接口（每行一条，{id}=谱面集ID）</label>
+      <textarea id="setDl" rows="5" spellcheck="false"></textarea>
+      <label style="margin-top:12px">CORS 代理（留空=直连；填 {url} 占位或后缀式前缀）</label>
+      <input id="setProxy" autocomplete="off" placeholder="https://api.allorigins.win/raw?url={url}">
+      <div class="row" style="margin-top:8px">
+        <button class="btn sm" data-proxy="">直连</button>
+        <button class="btn sm" data-proxy="https://api.allorigins.win/raw?url={url}">allorigins</button>
+        <button class="btn sm" data-proxy="https://corsproxy.io/?url={url}">corsproxy.io</button>
+      </div>
+      <div class="hint">默认两个源均已实测可用：<b>sayobot</b>（国内镜像，接口必须写成 <code>https://api.sayobot.cn/?post</code>，程序会用 text/plain 发 POST 以绕过 CORS 预检）与 <b>osu.direct</b>（官方数据镜像，<code>{q}</code> 为关键词）。新增源只要 URL 里含 sayobot 或 osu.direct 就会走对应适配器，其他域名走通用解析。</div>
+    </div>
+    <div class="card">
+      <label>osu! 官方 API（可选，填了优先用官方搜索）</label>
+      <div class="row">
+        <input id="setCid" placeholder="client_id" autocomplete="off">
+        <input id="setCsec" placeholder="client_secret" autocomplete="off">
+      </div>
+      <div class="hint">在 osu.ppy.sh/home/account/edit → OAuth 申请，选 Client Credentials。仅用于搜索，下载仍走镜像。</div>
+      <div class="row" style="margin-top:10px">
+        <button id="btnSave" class="btn primary">保存设置</button>
+        <button id="btnReset" class="btn">恢复默认</button>
+      </div>
+      <div id="setmsg" class="msg"></div>
+    </div>
+  </section>
+
+  <!-- 转换参数 -->
+  <details class="card" id="optbox">
+    <summary>转换参数（点击展开）</summary>
+    <div style="margin-top:12px">
+      <div class="grid2">
+        <div><label>轨道宽度占比</label><input id="oSpread" type="number" step="0.05" min="0.3" max="1" value="0.75"></div>
+        <div><label>判定线 Y (0~1400)</label><input id="oLineY" type="number" step="10" min="0" max="1400" value="700"></div>
+        <div><label>流速 (PEC cv)</label><input id="oSpeed" type="number" step="0.5" min="1" value="8.5"></div>
+        <div><label>偏移 ms（正=提前）</label><input id="oOff" type="number" step="1" value="0"></div>
+      </div>
+      <div class="row" style="margin-top:10px;align-items:center">
+        <label style="margin:0;display:flex;align-items:center;gap:8px;flex:1">
+          <input type="checkbox" id="oFlick" style="flex:0 0 auto;width:18px;height:18px;padding:0">
+          <span>hitsound「finish」的音符转成 Flick</span>
+        </label>
+      </div>
+      <div class="msg info show" style="margin-top:10px">4K 谱面会分布在屏幕中部；7K 及以上轨道会自动变窄，可在 Re:PhiEdit / Phira 中继续微调。</div>
+    </div>
+  </details>
+
+  <div id="out"></div>
+
+  <footer>
+    输出格式：Phigros PEC（.pec，可被 Phira / Re:PhiEdit / PhiEditor 读取）<br>
+    ZIP 内含 chart.pec + 音频 + 曲绘 + info.yml，可直接导入 Phira<br>
+    输入：osu!mania（.osz / .osu）· Malody Key 模式（.mcz / .mc / .mc_，4K / 6K / 7K…）
+  </footer>
+</div>
+
+<script src="lib/jszip.min.js"></script>
+<script src="core.js?v=3"></script>
+<script src="app.js?v=3"></script>
+</body>
+</html>
